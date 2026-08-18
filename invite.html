@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>찍샘 초대장</title>
+<meta property="og:title" content="찍샘 초대장 — 무료 30회 받기">
+<meta property="og:description" content="문제 찍으면 AI 선생님이 풀어 줘요. 초대 코드로 시작하면 무료 30회를 받아요.">
+<style>
+  :root { --brand:#3182F6; --hot:#FF5A3C; --ink:#16171B; --muted:#8b8f97; --card:#fff; --bg:#F7F7F9; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Apple SD Gothic Neo","Pretendard","Noto Sans KR",-apple-system,sans-serif;
+    line-height:1.6; -webkit-text-size-adjust:100%; }
+  .wrap { max-width:420px; margin:0 auto; padding:40px 20px 64px; text-align:center; }
+  .gift { font-size:56px; line-height:1; }
+  h1 { font-size:28px; letter-spacing:-0.6px; margin:16px 0 6px; }
+  .sub { color:var(--muted); font-size:15px; margin:0 0 28px; }
+  .card { background:var(--card); border-radius:20px; padding:24px 20px; margin-bottom:14px;
+          box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .code-label { font-size:13px; color:var(--muted); margin:0; }
+  .code { font-size:34px; font-weight:800; letter-spacing:8px; color:var(--brand);
+          margin:6px 0 2px; font-variant-numeric:tabular-nums; }
+  .code.none { font-size:17px; letter-spacing:0; color:var(--muted); font-weight:600; }
+  .copy { background:none; border:1px solid #E1E2E6; border-radius:999px; color:var(--muted);
+          font-size:13px; padding:6px 14px; cursor:pointer; font-family:inherit; }
+  .btn { display:block; width:100%; padding:16px; border-radius:14px; border:0; cursor:pointer;
+         font-size:16px; font-weight:700; font-family:inherit; text-decoration:none; margin-bottom:10px; }
+  .btn-primary { background:var(--hot); color:#fff; }
+  .btn-store { background:#fff; color:var(--ink); border:1px solid #E1E2E6; }
+  ol { text-align:left; padding-left:20px; color:var(--muted); font-size:14px; margin:24px 0 0; }
+  ol li { margin-bottom:8px; }
+  ol b { color:var(--ink); }
+  footer { margin-top:36px; font-size:12px; color:var(--muted); }
+  a { color:var(--brand); }
+</style>
+</head>
+<body><div class="wrap">
+  <div class="gift">🎁</div>
+  <h1>친구가 찍샘에 초대했어요</h1>
+  <p class="sub">코드를 입력하면 <b>무료 30회</b>를 받아요<br>초대한 친구도 함께 받아요</p>
+
+  <div class="card">
+    <p class="code-label">초대 코드</p>
+    <p class="code none" id="code">코드 없음</p>
+    <button class="copy" id="copy" hidden>코드 복사</button>
+  </div>
+
+  <a class="btn btn-primary" id="open" href="#">앱에서 열기</a>
+  <a class="btn btn-store" id="ios" href="https://apps.apple.com/app/id0000000000">App Store에서 받기</a>
+  <a class="btn btn-store" id="android" href="https://play.google.com/store/apps/details?id=com.uzuplay.jjiksam">Google Play에서 받기</a>
+
+  <ol>
+    <li><b>찍샘 설치</b> 후 카카오·애플·구글로 로그인해요.</li>
+    <li><b>나 탭 → 친구 초대</b>에서 위 코드를 입력해요.</li>
+    <li>입력하는 순간 <b>나도 친구도 무료 30회</b>가 쌓여요.</li>
+  </ol>
+
+  <footer>찍샘 (jjiksam) · 우주플레이랩 · <a href="./terms.html">이용약관</a> · <a href="./privacy.html">개인정보처리방침</a></footer>
+</div>
+
+<script>
+  var code = new URLSearchParams(location.search).get('ref') || '';
+  code = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+
+  var el = document.getElementById('code');
+  var openBtn = document.getElementById('open');
+  var copyBtn = document.getElementById('copy');
+  var appUrl = code ? 'jjiksam://invite?code=' + code : 'jjiksam://invite';
+
+  if (code) {
+    el.textContent = code;
+    el.classList.remove('none');
+    copyBtn.hidden = false;
+    copyBtn.onclick = function () {
+      navigator.clipboard.writeText(code).then(function () {
+        copyBtn.textContent = '복사됨';
+        setTimeout(function () { copyBtn.textContent = '코드 복사'; }, 1500);
+      });
+    };
+  }
+  openBtn.href = appUrl;
+
+  // 플랫폼에 맞는 스토어 버튼만 남긴다 (PC 는 둘 다 보여 준다)
+  var ua = navigator.userAgent;
+  var isIOS = /iPhone|iPad|iPod/.test(ua);
+  var isAndroid = /Android/.test(ua);
+  if (isIOS) document.getElementById('android').hidden = true;
+  if (isAndroid) document.getElementById('ios').hidden = true;
+  if (!isIOS && !isAndroid) openBtn.hidden = true; // PC 에선 앱 열기 무의미
+
+  // 앱 자동 열기 시도 — 설치돼 있으면 즉시 전환되고, 없으면 이 페이지에 남는다.
+  // (스토어로 강제 이동시키면 앱이 있는 사람도 스토어로 튕겨서 하지 않는다)
+  if (isIOS || isAndroid) {
+    setTimeout(function () { location.href = appUrl; }, 300);
+  }
+</script>
+</body></html>
