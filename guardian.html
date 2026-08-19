@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>찍샘 보호자 동의</title>
+<style>
+  body { margin:0; background:#F7F7F9; color:#16171B;
+    font-family:"Apple SD Gothic Neo","Pretendard","Noto Sans KR",-apple-system,sans-serif;
+    display:flex; align-items:center; justify-content:center; min-height:100vh; padding:24px; }
+  .card { background:#fff; border-radius:22px; padding:36px 24px; max-width:420px; width:100%;
+    text-align:center; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .mark { font-size:48px; line-height:1; }
+  h1 { font-size:22px; letter-spacing:-0.4px; margin:14px 0 10px; }
+  p { color:#6B7280; line-height:1.7; margin:0; font-size:15px; }
+  .note { color:#9CA3AF; font-size:13px; line-height:1.6; margin-top:20px; }
+  a { color:#3182F6; }
+  .links { margin-top:24px; font-size:13px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="mark" id="mark">⏳</div>
+    <h1 id="title">확인 중…</h1>
+    <p id="body"></p>
+    <p class="note" id="note"></p>
+    <div class="links">
+      <a href="./terms.html">이용약관</a> · <a href="./privacy.html">개인정보처리방침</a>
+    </div>
+  </div>
+
+<script>
+  var R = {
+    ok: {
+      mark: '✅', title: '동의가 완료됐어요',
+      body: '자녀가 찍샘을 이용할 수 있습니다.<br/>앱으로 돌아가 <b>동의 확인했어요</b>를 눌러 주세요.',
+      note: '동의 확인을 마쳤으므로 보호자 이메일은 즉시 삭제했습니다.'
+    },
+    already: {
+      mark: '✅', title: '이미 동의가 완료됐어요',
+      body: '자녀가 찍샘을 이용할 수 있습니다.',
+      note: '보호자 이메일은 확인 시점에 이미 삭제했습니다.'
+    },
+    expired: {
+      mark: '⏰', title: '링크가 만료됐어요',
+      body: '유효기간(7일)이 지났습니다.<br/>앱에서 동의 메일을 다시 보내 주세요.',
+      note: ''
+    },
+    notfound: {
+      mark: '⚠️', title: '요청을 찾을 수 없어요',
+      body: '앱에서 동의 요청을 다시 보내 주세요.',
+      note: '메일의 링크를 그대로 눌렀는지 확인해 주세요.'
+    },
+    error: {
+      mark: '⚠️', title: '처리하지 못했어요',
+      body: '잠시 후 다시 시도해 주세요.',
+      note: '계속 문제가 있으면 support@uzuplay.com 으로 알려 주세요.'
+    }
+  };
+  var key = new URLSearchParams(location.search).get('r') || 'notfound';
+  var r = R[key] || R.notfound;
+  document.getElementById('mark').textContent = r.mark;
+  document.getElementById('title').textContent = r.title;
+  document.getElementById('body').innerHTML = r.body;
+  document.getElementById('note').textContent = r.note;
+  document.title = '찍샘 · ' + r.title;
+</script>
+</body>
+</html>
