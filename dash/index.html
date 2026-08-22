@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>찍샘 운영 대시보드</title>
+<!--
+  내부 전용 — 브라우저에서 이 파일을 직접 연다 (배포하지 않는다).
+  데이터: report-digest?dash=1 (x-digest-key 인증, 내부 계정 제외 집계).
+  키는 localStorage 에만 저장된다.
+-->
+<style>
+  :root {
+    --bg:#F2F3F5; --card:#FFFFFF; --ink:#20242C; --sub:#7A8091; --line:#E6E8EC;
+    --brand:#3479F6; --good:#1DA463; --bad:#E5484D; --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  * { box-sizing:border-box; margin:0 }
+  body { background:var(--bg); color:var(--ink); font:15px/1.5 -apple-system,"Apple SD Gothic Neo",sans-serif; padding:28px }
+  h1 { font-size:20px; margin-bottom:4px }
+  .sub { color:var(--sub); font-size:13px; margin-bottom:20px }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:14px; align-items:start }
+  .card { background:var(--card); border-radius:14px; padding:16px 18px; box-shadow:0 1px 2px rgba(0,0,0,.05) }
+  .card h2 { font-size:13px; color:var(--sub); font-weight:600; margin-bottom:10px; letter-spacing:.02em }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:14px; margin-bottom:14px }
+  .kpi { background:var(--card); border-radius:14px; padding:14px 16px; box-shadow:0 1px 2px rgba(0,0,0,.05) }
+  .kpi .v { font-size:24px; font-weight:800; font-variant-numeric:tabular-nums }
+  .kpi .l { font-size:12px; color:var(--sub); margin-top:2px }
+  table { width:100%; border-collapse:collapse; font-size:13px }
+  th { text-align:left; color:var(--sub); font-weight:600; padding:4px 6px; border-bottom:1px solid var(--line) }
+  td { padding:4px 6px; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums }
+  td.n, th.n { text-align:right; font-family:var(--mono); font-size:12px }
+  .bar { height:8px; background:var(--brand); border-radius:4px; min-width:2px }
+  .funnel-row { display:flex; align-items:center; gap:10px; margin:6px 0 }
+  .funnel-row .name { width:130px; font-size:12px; color:var(--sub) }
+  .funnel-row .n { width:44px; text-align:right; font-family:var(--mono); font-size:12px }
+  .keybox { display:flex; gap:8px; margin:40px auto; max-width:460px }
+  .keybox input { flex:1; padding:12px 14px; border:1px solid var(--line); border-radius:10px; font-size:14px }
+  .keybox button, .top button { padding:12px 18px; border:0; border-radius:10px; background:var(--brand); color:#fff; font-weight:700; cursor:pointer }
+  .top { display:flex; justify-content:space-between; align-items:center }
+  .top button { padding:8px 14px; font-size:13px }
+  .err { color:var(--bad); text-align:center; margin-top:20px }
+  .scroll { overflow-x:auto }
+</style>
+</head>
+<body>
+<div class="top">
+  <div><h1>찍샘 운영 대시보드</h1><div class="sub" id="meta">키를 입력하세요</div></div>
+  <div><button onclick="load()">새로고침</button> <button style="background:#9AA0AE" onclick="resetKey()">키 변경</button></div>
+</div>
+<div id="app"></div>
+
+<script>
+const EP = 'https://vskslvtrezsibjthqbhk.supabase.co/functions/v1/report-digest?dash=1&days=30';
+// 게이트웨이 통과용 익명 키 — 공개 키라 앱 번들에도 들어가는 값 (데이터 접근 권한은 x-digest-key 가 결정)
+const ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZza3NsdnRyZXpzaWJqdGhxYmhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODgzMTQsImV4cCI6MjEwMjQ2NDMxNH0.fuHY8meafITAqgIljOfCQXx4bghGkqDm1XsoE__drCY';
+const $ = (h) => { const d = document.createElement('div'); d.innerHTML = h; return d.firstElementChild; };
+// 로컬 파일(file:)·미리보기 환경에선 localStorage 가 SecurityError 를 던질 수 있다 — 메모리 폴백
+let memKey = null;
+const getKey = () => { try { return localStorage.getItem('digestKey') ?? memKey; } catch { return memKey; } };
+const setKey = (v) => { memKey = v; try { localStorage.setItem('digestKey', v); } catch {} };
+const delKey = () => { memKey = null; try { localStorage.removeItem('digestKey'); } catch {} };
+const num = (n) => Number(n ?? 0).toLocaleString();
+const app = document.getElementById('app');
+
+function resetKey() { delKey(); location.reload(); }
+
+function askKey() {
+  app.innerHTML = '';
+  const box = $(`<div class="keybox"><input type="password" placeholder="REPORT_DIGEST_KEY" id="k"><button>열기</button></div>`);
+  box.querySelector('button').onclick = () => {
+    setKey(box.querySelector('#k').value.trim());
+    load();
+  };
+  app.appendChild(box);
+}
+
+async function load() {
+  const key = getKey();
+  if (!key) return askKey();
+  document.getElementById('meta').textContent = '불러오는 중…';
+  let d;
+  try {
+    const res = await fetch(EP, { headers: { 'x-digest-key': key, Authorization: `Bearer ${ANON}` } });
+    if (res.status === 403) { delKey(); return askKey(); }
+    d = await res.json();
+  } catch (e) {
+    app.innerHTML = `<div class="err">불러오기 실패 — 네트워크 또는 키 확인 (${e})</div>`;
+    return;
+  }
+  document.getElementById('meta').textContent =
+    `최근 ${d.days}일 · 내부 계정 제외 · ${new Date().toLocaleString('ko-KR')}`;
+  render(d);
+}
+
+function barTable(rows, cols) {
+  // rows: [[label, value, ...extra]] — 첫 값 기준 가로 막대
+  const max = Math.max(1, ...rows.map((r) => r[1]));
+  return `<div class="scroll"><table><tr>${cols.map((c,i)=>`<th class="${i>0?'n':''}">${c}</th>`).join('')}<th></th></tr>
+    ${rows.map((r) => `<tr><td>${r[0]}</td>${r.slice(1).map((v)=>`<td class="n">${num(v)}</td>`).join('')}
+      <td style="width:36%"><div class="bar" style="width:${(r[1]/max*100).toFixed(1)}%"></div></td></tr>`).join('')}
+  </table></div>`;
+}
+
+function render(d) {
+  const today = (d.daily ?? [])[0] ?? {};
+  const fb = d.events.feedback;
+  const fbRate = fb.up + fb.down ? Math.round(fb.up / (fb.up + fb.down) * 100) + '%' : '—';
+  const cost = (d.daily ?? []).reduce((a, r) => a + Number(r.cost_usd ?? 0), 0);
+
+  app.innerHTML = `
+  <div class="kpis">
+    <div class="kpi"><div class="v">${num(d.users.total)}</div><div class="l">누적 유저</div></div>
+    <div class="kpi"><div class="v">${num(d.users.pro)}</div><div class="l">PRO 구독</div></div>
+    <div class="kpi"><div class="v">${num(d.activity?.wau)}</div><div class="l">WAU (7일 활성)</div></div>
+    <div class="kpi"><div class="v">${num(d.activity?.mau)}</div><div class="l">MAU (30일 활성)</div></div>
+    <div class="kpi"><div class="v">${num(today.ai_solves)}</div><div class="l">오늘 AI 풀이 (캐시 ${num(today.cache_hits)})</div></div>
+    <div class="kpi"><div class="v">${num(today.active_solvers)}</div><div class="l">오늘 풀이 유저</div></div>
+    <div class="kpi"><div class="v">${fbRate}</div><div class="l">도움됐어요 비율 (👍${num(fb.up)} 👎${num(fb.down)})</div></div>
+    <div class="kpi"><div class="v">$${cost.toFixed(2)}</div><div class="l">기간 AI 원가</div></div>
+    <div class="kpi"><div class="v">${num(d.errorReports)}</div><div class="l">풀이 오류 신고</div></div>
+  </div>
+  <div class="grid">
+    <div class="card"><h2>활성 — 일별 DAU</h2>${barTable(
+      Object.entries(d.activity?.dauByDay ?? {}).slice(0, 14), ['날짜', 'DAU'])}</div>
+    <div class="card"><h2>획득 — 로그인 방법</h2>${barTable(
+      Object.entries(d.acquisition?.loginMethods ?? {}).sort((a, b) => b[1] - a[1]),
+      ['방법', '건수'])}</div>
+    <div class="card"><h2>결제 — 플랜별 성공</h2>${barTable(
+      Object.entries(d.purchases?.byPlan ?? {}).sort((a, b) => b[1] - a[1]),
+      ['플랜', '건수'])}
+      <div style="margin-top:8px;font-size:12px;color:var(--sub)">
+        페이월 전환율: ${(() => {
+          const f = Object.fromEntries(d.events.funnel.map((x) => [x.step, x.users]));
+          return f.paywall_view ? Math.round((f.purchase_success ?? 0) / f.paywall_view * 100) + '% (조회 ' + num(f.paywall_view) + ' → 결제 ' + num(f.purchase_success) + ')' : '—';
+        })()}
+      </div></div>
+    <div class="card"><h2>주간 코호트 리텐션 (가입 주 기준)</h2><div class="scroll"><table>
+      <tr><th>가입 주</th><th class="n">코호트</th><th class="n">W+1</th><th class="n">W+2</th><th class="n">W+3</th><th class="n">W+4</th></tr>
+      ${Object.entries(d.weeklyCohorts ?? {}).map(([wk, c]) => {
+        const pct = (n) => c.size ? Math.round(n / c.size * 100) + '%' : '—';
+        return `<tr><td>${wk}</td><td class="n">${num(c.size)}</td>` +
+          c.w.map((n) => `<td class="n">${pct(n)}</td>`).join('') + '</tr>';
+      }).join('')}
+    </table></div></div>
+    <div class="card"><h2>퍼널 — 기간 내 고유 유저</h2>${
+      d.events.funnel.map((f, i, a) => {
+        const first = a[0].users || 1;
+        const label = { screen_view:'앱 사용', solve_requested:'풀이 요청', paywall_view:'페이월 조회',
+                        purchase_initiated:'결제 시도', purchase_success:'결제 완료' }[f.step] ?? f.step;
+        return `<div class="funnel-row"><div class="name">${label}</div><div class="n">${num(f.users)}</div>
+          <div style="flex:1"><div class="bar" style="width:${(f.users/first*100).toFixed(1)}%"></div></div></div>`;
+      }).join('')
+    }</div>
+    <div class="card"><h2>일별 풀이·유저·원가</h2>${barTable(
+      (d.daily ?? []).slice(0, 14).map((r) => [r.day, r.ai_solves, r.active_solvers, '$' + Number(r.cost_usd ?? 0).toFixed(2)]),
+      ['날짜', 'AI풀이', '유저', '원가'])}</div>
+    <div class="card"><h2>일별 가입</h2>${barTable(
+      Object.entries(d.users.signupByDay).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 14),
+      ['날짜', '가입'])}</div>
+    <div class="card"><h2>이벤트 — 이름별 (건수 / 유저)</h2>${barTable(
+      Object.entries(d.events.byName).map(([k, v]) => [k, v.n, v.users]),
+      ['이벤트', '건수', '유저'])}</div>
+    <div class="card"><h2>화면 동선 — 조회 상위</h2>${barTable(
+      Object.entries(d.events.screenPaths), ['화면', '조회'])}</div>
+    <div class="card"><h2>리텐션 (가입일 코호트)</h2><div class="scroll"><table>
+      <tr><th>가입일</th><th class="n">코호트</th><th class="n">D1</th><th class="n">D7</th><th class="n">D30</th></tr>
+      ${(d.retention ?? []).slice(0, 14).map((r) =>
+        `<tr><td>${r.joined}</td><td class="n">${num(r.cohort_size)}</td><td class="n">${num(r.d1)}</td>
+         <td class="n">${num(r.d7)}</td><td class="n">${num(r.d30)}</td></tr>`).join('')}
+    </table></div></div>
+    <div class="card"><h2>모델별 호출·원가</h2><div class="scroll"><table>
+      <tr><th>모델</th><th class="n">호출</th><th class="n">원가</th><th class="n">평균 ms</th></tr>
+      ${(d.models ?? []).map((r) =>
+        `<tr><td>${r.model}</td><td class="n">${num(r.calls)}</td><td class="n">$${Number(r.cost_usd ?? 0).toFixed(2)}</td>
+         <td class="n">${num(r.avg_ms)}</td></tr>`).join('')}
+    </table></div></div>
+    <div class="card"><h2>소셜 활동 (기간 합)</h2><table>
+      <tr><td>카페 생성</td><td class="n">${num(d.social.groupsCreated)}</td></tr>
+      <tr><td>문제 공유</td><td class="n">${num(d.social.problemsShared)}</td></tr>
+      <tr><td>응원 전송</td><td class="n">${num(d.social.nudgesSent)}</td></tr>
+    </table></div>
+  </div>`;
+}
+load();
+</script>
+</body>
+</html>
