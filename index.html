@@ -59,8 +59,10 @@
   .hero { position: relative; overflow: hidden; color: #fff; text-align: center;
     background: radial-gradient(120% 90% at 50% 0%, #4D96FF 0%, var(--blue) 38%, var(--blue-dark) 78%, #0B3E9C 100%); }
   /* 방사형 효과선 — 만화 집중선을 conic-gradient 로 */
-  .hero::before { content: ""; position: absolute; inset: -40%;
-    background: repeating-conic-gradient(from 0deg at 50% 42%,
+  /* 회전체는 반드시 원 — 사각형이 돌면 모서리가 화면 안으로 들어와 잘려 보인다 (실측) */
+  .hero::before { content: ""; position: absolute; left: 50%; top: 42%;
+    width: 260vmax; height: 260vmax; translate: -50% -50%; border-radius: 50%;
+    background: repeating-conic-gradient(from 0deg,
       rgba(255,255,255,0.0) 0deg 9deg, rgba(255,255,255,0.10) 9deg 12deg);
     animation: spin 90s linear infinite; }
   @keyframes spin { to { rotate: 360deg; } }
@@ -154,8 +156,9 @@
   /* ── 클로징 ───────────────────────────── */
   .closing { position: relative; overflow: hidden; color: #fff; text-align: center; padding: 110px 0;
     background: radial-gradient(110% 100% at 50% 100%, #4D96FF 0%, var(--blue) 42%, var(--blue-dark) 85%); }
-  .closing::before { content: ""; position: absolute; inset: -40%;
-    background: repeating-conic-gradient(from 0deg at 50% 60%,
+  .closing::before { content: ""; position: absolute; left: 50%; top: 60%;
+    width: 260vmax; height: 260vmax; translate: -50% -50%; border-radius: 50%;
+    background: repeating-conic-gradient(from 0deg,
       rgba(255,255,255,0.0) 0deg 9deg, rgba(255,255,255,0.09) 9deg 12deg);
     animation: spin 100s linear infinite; }
   .closing .wrap { position: relative; }
