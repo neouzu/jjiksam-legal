@@ -72,16 +72,21 @@
     padding: 7px 16px; border-radius: 999px; rotate: -1.5deg;
     box-shadow: 0 4px 14px rgba(0,0,0,0.22); margin-bottom: 22px; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  .title-card { width: min(620px, 88vw); margin: 0 auto 22px; border-radius: 26px;
-    rotate: -1.2deg; border: 3px solid #0B1120;
+  /* 포스터 타이틀 유닛 — 플레이트·문장은 HTML, 메탈 로고만 이미지(같은 남색 패널 크롭이라 이어짐) */
+  .title-plate { width: min(620px, 90vw); margin: 0 auto 24px; background: #0f1835; border-radius: 26px;
+    rotate: -1.2deg; border: 3px solid #0B1120; padding: 24px 18px 20px;
     box-shadow: 0 22px 54px rgba(0,0,0,0.38), 0 4px 0 rgba(9,40,110,0.5); }
+  .tp-catch { font-family: var(--disp); font-weight: 400; font-size: clamp(21px, 4.4vw, 33px);
+    margin: 0; color: #fff; letter-spacing: 0; line-height: 1.2; }
+  .tp-logo { width: min(430px, 72vw); margin: 8px auto 6px; }
+  .tp-sub { margin: 0; color: var(--yellow); font-weight: 700; font-size: clamp(13.5px, 2.2vw, 16.5px); }
   .hero .lede { font-size: clamp(16.5px, 2vw, 20px); font-weight: 500; color: rgba(255,255,255,0.92);
     max-width: 34em; margin: 0 auto 30px; }
   .store-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
   .store-note { font-size: 13.5px; color: rgba(255,255,255,0.75); margin-top: 14px; }
   .hero-art { position: relative; width: min(430px, 74vw); margin: 26px auto 0; }
-  .hero-art img { filter: drop-shadow(0 30px 50px rgba(0,0,0,0.35)); border-radius: 26px 26px 0 0;
-    animation: floaty 5.5s ease-in-out infinite; }
+  /* 섹션 하단에 붙는 아트라 둥실거리면 밑에 배경 틈이 보인다 (실측) — 고정 */
+  .hero-art img { filter: drop-shadow(0 30px 50px rgba(0,0,0,0.35)); border-radius: 26px 26px 0 0; }
   @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
   /* 부유하는 수학 기호 */
   .sym { position: absolute; font-family: var(--disp); color: rgba(255,255,255,0.85);
@@ -204,7 +209,11 @@
     <div class="hero-inner">
       <span class="kicker">전과목 AI 풀이 · 공부 타이머 · 오답 노트</span>
       <h1 class="sr-only">찍기만 해, 나머진 내가! — 찍샘</h1>
-      <img class="title-card" src="img/wordmark-navy.jpg" alt="" width="900" height="462">
+      <div class="title-plate">
+        <p class="tp-catch">찍기만 해, 나머진 내가!!</p>
+        <img class="tp-logo" src="img/wordmark-logo.jpg" alt="찍샘" width="840" height="380">
+        <p class="tp-sub">막힌 문제 그 자리에서, 단계별로, 함정까지</p>
+      </div>
       <p class="lede">답지를 봐도 모르겠을 때, 물어볼 사람이 없을 때 —
       사진 한 장이면 AI 선생님이 <b>왜 그런지까지</b> 단계별로 풀어드립니다.</p>
       <div class="store-row" id="download">
