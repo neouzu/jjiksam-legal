@@ -3,24 +3,281 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>찍샘 약관·정책</title>
+<title>찍샘 - 찍으면 알려주는 AI 선생님</title>
+<meta name="description" content="사진 찍으면 AI 선생님이 단계별로 풀어줘요. 공부 타이머 · 오답 노트 · 스터디카페까지 한 번에.">
+<meta property="og:title" content="찍샘 - 찍으면 알려주는 AI 선생님">
+<meta property="og:description" content="찍기만 해, 나머진 내가! 전과목 AI 풀이 · 공부 타이머 · 오답 노트">
+<meta property="og:image" content="https://jjiksam.uzuplay.com/img/shot01.jpg">
+<meta property="og:url" content="https://jjiksam.uzuplay.com">
+<link rel="icon" href="img/appicon.png">
 <style>
-  body { margin: 0; background: #F7F7F9; color: #16171B;
+  :root {
+    --blue: #3182F6; --blue-deep: #1B64DA; --night: #171F2E;
+    --bg: #F7F7F9; --card: #FFFFFF; --ink: #16171B; --ink-mid: #4A4F58; --ink-muted: #8B8F97;
+    --border: #E7E8EC; --radius: 22px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
     font-family: "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", -apple-system, sans-serif;
-    font-size: 16px; line-height: 1.75; }
-  .wrap { max-width: 760px; margin: 0 auto; padding: 48px 20px 96px; }
-  h1 { font-size: 26px; letter-spacing: -0.5px; }
-  h2 { font-size: 19px; margin-top: 36px; letter-spacing: -0.3px; }
-  blockquote { margin: 16px 0; padding: 10px 16px; background: #FFF6E5; border-left: 3px solid #E8A33D; border-radius: 6px; color: #6b5b3a; font-size: 14px; }
-  table { border-collapse: collapse; width: 100%; font-size: 14px; margin: 12px 0; }
-  th, td { border: 1px solid #E1E2E6; padding: 8px 10px; text-align: left; vertical-align: top; }
-  th { background: #EFF0F3; }
-  .scroller { overflow-x: auto; }
-  a { color: #3182F6; }
-  footer { margin-top: 48px; font-size: 13px; color: #8b8f97; }
+    font-size: 17px; line-height: 1.7; letter-spacing: -0.015em; -webkit-font-smoothing: antialiased; }
+  img { max-width: 100%; display: block; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+
+  /* 헤더 */
+  header { position: sticky; top: 0; z-index: 10; background: rgba(247,247,249,0.88);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--border); }
+  .nav { display: flex; align-items: center; gap: 20px; height: 62px; }
+  .logo { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 19px; letter-spacing: -0.4px; }
+  .logo img { width: 30px; height: 30px; border-radius: 8px; }
+  .nav-links { display: flex; gap: 18px; margin-left: auto; font-size: 15px; color: var(--ink-mid); font-weight: 600; }
+  .nav-links a:hover { color: var(--ink); }
+  .nav .cta { margin-left: 4px; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    background: var(--blue); color: #fff; font-weight: 700; font-size: 15px;
+    padding: 10px 18px; border-radius: 999px; transition: background .15s; }
+  .btn:hover { background: var(--blue-deep); }
+  .btn.ghost { background: var(--card); color: var(--ink); border: 1px solid var(--border); }
+  .btn.big { font-size: 17px; padding: 14px 26px; }
+  .btn .sub { font-size: 12px; font-weight: 600; opacity: .8; }
+
+  /* 히어로 */
+  .hero { padding: 64px 0 24px; display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 36px; align-items: center; }
+  .hero h1 { font-size: clamp(34px, 5.2vw, 54px); line-height: 1.22; letter-spacing: -1.5px; margin: 0 0 18px; font-weight: 900; }
+  .hero h1 .blue { color: var(--blue); }
+  .hero p.lede { font-size: clamp(17px, 2vw, 20px); color: var(--ink-mid); margin: 0 0 28px; max-width: 30em; }
+  .store-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .store-note { font-size: 13px; color: var(--ink-muted); margin-top: 10px; }
+  .hero-shot { justify-self: center; width: min(320px, 78vw); border-radius: 30px; overflow: hidden;
+    box-shadow: 0 24px 60px rgba(23,31,46,0.22); rotate: 2deg; }
+
+  /* 신뢰 배지 줄 */
+  .chips { display: flex; gap: 10px; flex-wrap: wrap; margin: 26px 0 0; }
+  .chip { background: var(--card); border: 1px solid var(--border); border-radius: 999px;
+    padding: 7px 14px; font-size: 13.5px; font-weight: 700; color: var(--ink-mid); }
+
+  /* 섹션 공통 */
+  section { padding: 72px 0; }
+  .eyebrow { color: var(--blue); font-weight: 800; font-size: 14.5px; letter-spacing: .02em; margin: 0 0 8px; }
+  h2 { font-size: clamp(26px, 3.6vw, 38px); letter-spacing: -1px; line-height: 1.3; margin: 0 0 10px; font-weight: 900; }
+  .sec-lede { color: var(--ink-mid); font-size: clamp(16px, 1.8vw, 18.5px); margin: 0 0 40px; max-width: 36em; }
+
+  /* 기능 카드 */
+  .feature { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center; padding: 34px 0; }
+  .feature:nth-child(even) .f-shot { order: -1; }
+  .f-shot { justify-self: center; width: min(300px, 80vw); border-radius: 26px; overflow: hidden;
+    box-shadow: 0 16px 44px rgba(23,31,46,0.16); }
+  .f-copy h3 { font-size: clamp(22px, 2.8vw, 30px); letter-spacing: -0.8px; margin: 0 0 12px; font-weight: 800; line-height: 1.35; }
+  .f-copy p { color: var(--ink-mid); margin: 0; max-width: 28em; }
+  .f-copy .thin { display: block; font-size: 15px; color: var(--ink-muted); font-weight: 600; margin-bottom: 6px; }
+
+  /* 선생님 마퀴 */
+  .teachers { background: var(--night); color: #fff; overflow: hidden; }
+  .teachers h2 { color: #fff; }
+  .teachers .sec-lede { color: rgba(255,255,255,0.72); }
+  .marquee { display: flex; gap: 14px; width: max-content; animation: roll 36s linear infinite; margin-top: 8px; }
+  .marquee img { width: 88px; height: 88px; border-radius: 22px; border: 2px solid rgba(255,255,255,0.14); }
+  @keyframes roll { to { transform: translateX(-50%); } }
+  @media (prefers-reduced-motion: reduce) { .marquee { animation: none; flex-wrap: wrap; width: auto; } }
+
+  /* 요금 */
+  .plans { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; max-width: 760px; }
+  .plan { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; }
+  .plan.pro { border: 2px solid var(--blue); position: relative; }
+  .plan .name { font-weight: 800; font-size: 19px; }
+  .plan .price { font-size: 15px; color: var(--ink-muted); margin: 2px 0 14px; }
+  .plan ul { margin: 0; padding: 0 0 0 2px; list-style: none; color: var(--ink-mid); font-size: 15.5px; }
+  .plan li { padding: 5px 0 5px 26px; position: relative; }
+  .plan li::before { content: "✓"; position: absolute; left: 0; color: var(--blue); font-weight: 800; }
+  .badge { position: absolute; top: -13px; left: 24px; background: var(--blue); color: #fff;
+    font-size: 12.5px; font-weight: 800; padding: 4px 12px; border-radius: 999px; }
+
+  /* 마무리 CTA */
+  .closing { background: linear-gradient(180deg, var(--blue) 0%, var(--blue-deep) 100%); color: #fff; text-align: center; }
+  .closing h2 { color: #fff; }
+  .closing .sec-lede { color: rgba(255,255,255,0.85); margin-left: auto; margin-right: auto; }
+  .closing .btn { background: #fff; color: var(--blue-deep); }
+  .closing .btn:hover { background: #EAF2FF; }
+  .closing .appicon { width: 92px; height: 92px; border-radius: 24px; margin: 0 auto 22px;
+    box-shadow: 0 14px 36px rgba(0,0,0,0.25); }
+
+  footer { padding: 40px 0 64px; font-size: 14px; color: var(--ink-muted); }
+  footer .links { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; font-weight: 600; color: var(--ink-mid); }
+  footer a:hover { color: var(--ink); }
+
+  @media (max-width: 760px) {
+    .hero { grid-template-columns: 1fr; padding-top: 40px; text-align: center; }
+    .hero p.lede { margin-left: auto; margin-right: auto; }
+    .store-row { justify-content: center; }
+    .chips { justify-content: center; }
+    .hero-shot { rotate: 0deg; margin-top: 8px; }
+    .feature { grid-template-columns: 1fr; gap: 24px; text-align: center; padding: 26px 0; }
+    .feature:nth-child(even) .f-shot { order: 0; }
+    .f-copy p { margin: 0 auto; }
+    .plans { grid-template-columns: 1fr; }
+    .nav-links a:not(.cta) { display: none; }
+  }
 </style>
 </head>
-<body><div class="wrap">
-<h1>찍샘 약관·정책</h1><ul><li><a href="./terms.html">서비스 이용약관</a></li><li><a href="./privacy.html">개인정보처리방침</a></li></ul>
-<footer>찍샘 (jjiksam) · 문의: neo@uzuplay.com</footer>
-</div></body></html>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="logo" href="#"><img src="img/appicon.png" alt="" width="30" height="30">찍샘</a>
+    <nav class="nav-links">
+      <a href="#features">기능</a>
+      <a href="#teachers">선생님</a>
+      <a href="#plans">요금</a>
+      <a class="btn cta" href="#download">앱 받기</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <div>
+      <h1>찍기만 해,<br>나머진 <span class="blue">내가!</span></h1>
+      <p class="lede">답지를 봐도 모르겠을 때, 물어볼 사람이 없을 때.
+      사진 한 장이면 AI 선생님이 왜 그런지까지 단계별로 풀어드립니다.</p>
+      <div class="store-row" id="download">
+        <a class="btn big" href="#download">App Store <span class="sub">곧 출시</span></a>
+        <a class="btn big ghost" href="#download">Google Play <span class="sub">곧 출시</span></a>
+      </div>
+      <p class="store-note">지금 심사 진행 중이에요 — 출시되면 이 버튼으로 바로 받을 수 있어요.</p>
+      <div class="chips">
+        <span class="chip">전과목 사진 풀이</span>
+        <span class="chip">단계별 쉬운 설명</span>
+        <span class="chip">공부 타이머</span>
+        <span class="chip">오답 노트</span>
+        <span class="chip">스터디카페</span>
+      </div>
+    </div>
+    <img class="hero-shot" src="img/shot01.jpg" alt="찍샘 — 찍기만 해, 나머진 내가" width="480" height="1038">
+  </div>
+
+  <section id="features">
+    <div class="wrap">
+      <p class="eyebrow">이렇게 공부해요</p>
+      <h2>답만 주는 앱이 아니에요</h2>
+      <p class="sec-lede">핵심 아이디어 → 단계별 풀이 → 자주 틀리는 함정까지.
+      이해가 안 되면 될 때까지 다르게 설명해 줘요.</p>
+
+      <div class="feature">
+        <div class="f-copy">
+          <h3><span class="thin">답부터 보면 실력이 늘까?</span>답은 30초 뒤에, 풀이 먼저</h3>
+          <p>정답을 바로 보여주지 않아요. 단계별 풀이를 먼저 읽고,
+          30초 동안 내 힘으로 답을 내보게 해요. 노크 세 번이면 답이 열려요.</p>
+        </div>
+        <img class="f-shot" src="img/shot03.jpg" alt="단계별 풀이 화면" loading="lazy">
+      </div>
+
+      <div class="feature">
+        <div class="f-copy">
+          <h3><span class="thin">그래도 이해가 안 되면</span>될 때까지 다시, 더 쉽게</h3>
+          <p>풀이의 어느 단계든 바로 이어서 질문할 수 있어요.
+          내 학년에 맞춰, 다른 방식으로 몇 번이고 다시 설명해 줘요.</p>
+        </div>
+        <img class="f-shot" src="img/shot04.jpg" alt="추가 질문 채팅 화면" loading="lazy">
+      </div>
+
+      <div class="feature">
+        <div class="f-copy">
+          <h3><span class="thin">열품타처럼</span>재기만 해도 쌓이는 공부 기록</h3>
+          <p>과목별 스톱워치와 뽀모도로. 오늘 몇 시간 공부했는지,
+          일·주간 통계와 연속 기록으로 한눈에 보여요.</p>
+        </div>
+        <img class="f-shot" src="img/shot05.jpg" alt="공부 타이머 화면" loading="lazy">
+      </div>
+
+      <div class="feature">
+        <div class="f-copy">
+          <h3><span class="thin">혼자 말고 같이</span>스터디카페에서 함께 달리기</h3>
+          <p>친구와 카페를 만들면 서로의 공부 시간이 보여요.
+          응원 보내기, 주간 랭킹, 문제 공유로 같이 성장해요.</p>
+        </div>
+        <img class="f-shot" src="img/shot06.jpg" alt="스터디카페 화면" loading="lazy">
+      </div>
+    </div>
+  </section>
+
+  <section class="teachers" id="teachers">
+    <div class="wrap">
+      <p class="eyebrow">내가 고르는 AI 선생님</p>
+      <h2>오늘은 어떤 쌤이랑 할래?</h2>
+      <p class="sec-lede">차분한 설명부터 텐션 높은 응원까지 — 취향대로 고르고,
+      내 최애의 말투로 커스텀 선생님도 만들 수 있어요.</p>
+    </div>
+    <div class="marquee" aria-hidden="true">
+      <img src="img/t01.jpg" alt=""><img src="img/t02.jpg" alt=""><img src="img/t03.jpg" alt="">
+      <img src="img/t04.jpg" alt=""><img src="img/t05.jpg" alt=""><img src="img/t06.jpg" alt="">
+      <img src="img/t07.jpg" alt=""><img src="img/t08.jpg" alt=""><img src="img/t09.jpg" alt="">
+      <img src="img/t10.jpg" alt=""><img src="img/t11.jpg" alt=""><img src="img/t12.jpg" alt="">
+      <img src="img/t13.jpg" alt=""><img src="img/t14.jpg" alt=""><img src="img/t15.jpg" alt="">
+      <img src="img/t16.jpg" alt=""><img src="img/t17.jpg" alt=""><img src="img/t18.jpg" alt="">
+      <img src="img/t01.jpg" alt=""><img src="img/t02.jpg" alt=""><img src="img/t03.jpg" alt="">
+      <img src="img/t04.jpg" alt=""><img src="img/t05.jpg" alt=""><img src="img/t06.jpg" alt="">
+      <img src="img/t07.jpg" alt=""><img src="img/t08.jpg" alt=""><img src="img/t09.jpg" alt="">
+      <img src="img/t10.jpg" alt=""><img src="img/t11.jpg" alt=""><img src="img/t12.jpg" alt="">
+      <img src="img/t13.jpg" alt=""><img src="img/t14.jpg" alt=""><img src="img/t15.jpg" alt="">
+      <img src="img/t16.jpg" alt=""><img src="img/t17.jpg" alt=""><img src="img/t18.jpg" alt="">
+    </div>
+  </section>
+
+  <section id="plans">
+    <div class="wrap">
+      <p class="eyebrow">요금</p>
+      <h2>무료로 시작하세요</h2>
+      <p class="sec-lede">광고 보고 매일 10문제 무료. 가입 첫날 5회는 광고 없이 바로,
+      친구 초대로 30회를 더 모을 수 있어요.</p>
+      <div class="plans">
+        <div class="plan">
+          <div class="name">무료</div>
+          <div class="price">₩0</div>
+          <ul>
+            <li>광고 보고 매일 10문제 풀이</li>
+            <li>가입 첫날 5회는 광고 없이</li>
+            <li>친구 초대로 최대 30회 적립</li>
+            <li>공부 타이머 · 오답 노트 · 스터디카페 전부 무료</li>
+          </ul>
+        </div>
+        <div class="plan pro">
+          <span class="badge">추천</span>
+          <div class="name">찍샘 PRO</div>
+          <div class="price">월간 · 3개월 · 연간 구독</div>
+          <ul>
+            <li>문제 풀이 무제한</li>
+            <li>광고 없이 바로바로</li>
+            <li>모든 무료 기능 포함</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="closing">
+    <div class="wrap">
+      <img class="appicon" src="img/appicon.png" alt="찍샘 앱 아이콘" width="92" height="92">
+      <h2>막힌 문제, 그 자리에서 바로</h2>
+      <p class="sec-lede">찍샘과 함께라면 모르는 문제가 무섭지 않아요.</p>
+      <a class="btn big" href="#download">앱 받으러 가기</a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="links">
+      <a href="terms.html">이용약관</a>
+      <a href="privacy.html">개인정보처리방침</a>
+      <a href="delete-account.html">계정 삭제 안내</a>
+      <a href="mailto:support@uzuplay.com">문의</a>
+    </div>
+    © 2026 UzuPlayLab (우주플레이랩) · 찍샘
+    <br>만 14세 미만은 보호자 동의 후 이용할 수 있어요.
+  </div>
+</footer>
+
+</body>
+</html>
