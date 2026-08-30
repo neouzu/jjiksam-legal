@@ -68,6 +68,7 @@
 </div>
 <div id="app"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
 <script>
 const BASE = 'https://vskslvtrezsibjthqbhk.supabase.co/functions/v1/report-digest?dash=1';
 // 기간 프리셋 — days(길이) + end(끝 오프셋). '어제'만 end=1 이라 하루 구간이 된다.
@@ -146,7 +147,7 @@ async function load() {
     `${pLabel} · ${platLabel} · 내부 계정 제외 · ${new Date().toLocaleString('ko-KR')} (10분마다 자동 새로고침)`;
   renderControls();
   render(d);
-  bindChart();
+  if (window.Chart) drawTrend(d.series); else bindChart();
   // 10분 자동 새로고침 — 중복 타이머가 쌓이지 않게 매번 다시 건다
   if (timer) clearTimeout(timer);
   timer = setTimeout(load, 10 * 60 * 1000);
@@ -219,6 +220,50 @@ function seriesChart(series) {
     `<span><i style="background:${d.color}"></i>${d.label}</span>`).join('')}</div>`;
 }
 
+/**
+ * Chart.js 꺾은선 — 툴팁·범례 토글·반응형을 라이브러리에 맡긴다.
+ * (직접 그린 SVG 도 남겨 뒀다: CDN 이 막히면 그쪽으로 폴백된다)
+ * 범례를 클릭하면 계열을 껐다 켤 수 있어, '풀이 횟수'가 커서 다른 선이 눌릴 때 유용하다.
+ */
+let trendChart = null;
+function drawTrend(series) {
+  const el = document.getElementById('trend');
+  if (!el || !series) return;
+  if (trendChart) trendChart.destroy(); // 기간·플랫폼 전환 시 캔버스 재사용
+  trendChart = new Chart(el, {
+    type: 'line',
+    data: {
+      labels: series.map((r) => r.day.slice(5)),
+      datasets: SERIES_DEFS.map((d) => ({
+        label: d.label,
+        data: series.map((r) => Number(r[d.key] ?? 0)),
+        borderColor: d.color,
+        backgroundColor: d.color,
+        borderWidth: 2,
+        tension: 0.3,
+        pointRadius: series.length > 45 ? 0 : 3,
+        pointHoverRadius: 5,
+      })),
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false }, // 세로 어디를 가리켜도 그날 값 전부 표시
+      plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8, font: { size: 12 } } },
+        tooltip: {
+          backgroundColor: '#12141A', padding: 10, cornerRadius: 8, displayColors: true,
+          callbacks: { title: (items) => series[items[0].dataIndex].day },
+        },
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { precision: 0, color: '#8B8F97' }, grid: { color: '#EDEFF3' } },
+        x: { ticks: { color: '#8B8F97', maxTicksLimit: 10 }, grid: { display: false } },
+      },
+    },
+  });
+}
+
 /** 차트 hover 바인딩 — render() 가 innerHTML 을 갈아끼우므로 매 렌더 후 다시 건다 */
 function bindChart() {
   const wrap = document.querySelector('.chartwrap');
@@ -275,7 +320,9 @@ function render(d) {
   </div>
   <div class="card" style="margin-bottom:14px">
     <h2>추이 — 신규 가입 · 활성 유저 · 풀이</h2>
-    ${seriesChart(d.series)}
+    ${window.Chart
+      ? '<div style="position:relative;height:260px"><canvas id="trend"></canvas></div>'
+      : seriesChart(d.series)}
   </div>
   <div class="grid">
     <div class="card"><h2>활성 — 일별 DAU</h2>${barTable(
