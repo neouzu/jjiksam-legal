@@ -45,14 +45,6 @@
   .segs button { background:transparent; color:var(--sub); border:0; padding:7px 12px; font-size:13px;
     font-weight:600; border-radius:8px; cursor:pointer }
   .segs button.on { background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.12) }
-  /* 시계열 차트 — 막대 3종(NRU·AU·구독)을 한 축에 겹치지 않게 나란히 */
-  .chart { display:flex; align-items:flex-end; gap:2px; height:150px; padding:8px 0 0 }
-  .chart .col { flex:1; min-width:0; display:flex; flex-direction:column; justify-content:flex-end;
-    align-items:center; gap:2px; height:100% }
-  .chart .stack { display:flex; align-items:flex-end; gap:1px; height:100%; width:100% }
-  .chart .b { flex:1; border-radius:2px 2px 0 0; min-height:1px }
-  .b1 { background:var(--brand) } .b2 { background:#00C471 } .b3 { background:#FF9500 }
-  .xlab { font-size:9px; color:var(--sub); white-space:nowrap; overflow:hidden }
   .legend { display:flex; gap:14px; font-size:12px; color:var(--sub); margin-top:6px }
   .legend i { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px }
 </style>
@@ -160,27 +152,52 @@ function barTable(rows, cols) {
   </table></div>`;
 }
 
-/** NRU·AU·구독 3종 시계열 — 하루당 막대 3개. 값이 0 인 날도 자리를 지켜 추세가 왜곡되지 않는다 */
+/**
+ * 시계열 꺾은선 — 신규 가입 / 활성 유저 / 풀이 유저 / 풀이 횟수.
+ * SVG 를 직접 그린다(차트 라이브러리 없음 — 이 페이지는 의존성 0 이 원칙).
+ * viewBox 로 그려 폭이 바뀌어도 비율이 유지되고, 점마다 <title> 로 값이 뜬다.
+ */
+const SERIES_DEFS = [
+  { key: 'nru', label: '신규 가입', color: '#3182F6' },
+  { key: 'au', label: '활성 유저(AU)', color: '#00C471' },
+  { key: 'solvers', label: '풀이 유저', color: '#A855F7' },
+  { key: 'solves', label: '풀이 횟수', color: '#FF9500' },
+];
+
 function seriesChart(series) {
   if (!series || !series.length) return '<div class="sub">데이터 없음</div>';
-  const max = Math.max(1, ...series.map((r) => Math.max(r.nru, r.au, r.subs)));
-  const showLab = (i) => series.length <= 14 || i % Math.ceil(series.length / 14) === 0;
-  const h = (v) => `${(v / max * 100).toFixed(1)}%`;
-  return `<div class="chart">${series.map((r, i) => `
-    <div class="col" title="${r.day} · 신규 ${r.nru} · 활성 ${r.au} · 구독 ${r.subs}">
-      <div class="stack">
-        <div class="b b1" style="height:${h(r.nru)}"></div>
-        <div class="b b2" style="height:${h(r.au)}"></div>
-        <div class="b b3" style="height:${h(r.subs)}"></div>
-      </div>
-      <div class="xlab">${showLab(i) ? r.day.slice(5) : ''}</div>
-    </div>`).join('')}</div>
-  <div class="legend">
-    <span><i class="b1"></i>신규 가입(NRU)</span>
-    <span><i class="b2"></i>활성 유저(AU)</span>
-    <span><i class="b3"></i>구독</span>
-    <span style="margin-left:auto">최대 ${max}</span>
-  </div>`;
+  const W = 760, H = 200, PAD = { l: 34, r: 8, t: 10, b: 22 };
+  const max = Math.max(1, ...series.flatMap((r) => SERIES_DEFS.map((d) => Number(r[d.key] ?? 0))));
+  const n = series.length;
+  const x = (i) => PAD.l + (n === 1 ? (W - PAD.l - PAD.r) / 2 : i * (W - PAD.l - PAD.r) / (n - 1));
+  const y = (v) => PAD.t + (H - PAD.t - PAD.b) * (1 - v / max);
+
+  // Y 눈금 — 0·중간·최대 세 줄이면 충분하다(값이 작아 촘촘하면 오히려 읽기 나쁘다)
+  const ticks = [0, Math.round(max / 2), max].filter((v, i, a) => a.indexOf(v) === i);
+  const grid = ticks.map((t) =>
+    `<line x1="${PAD.l}" x2="${W - PAD.r}" y1="${y(t)}" y2="${y(t)}" stroke="#E7E8EC" stroke-width="1"/>
+     <text x="${PAD.l - 6}" y="${y(t) + 4}" text-anchor="end" font-size="10" fill="#8B8F97">${t}</text>`).join('');
+
+  const step = Math.max(1, Math.ceil(n / 8));
+  const xlabs = series.map((r, i) => (i % step === 0 || i === n - 1)
+    ? `<text x="${x(i)}" y="${H - 6}" text-anchor="middle" font-size="10" fill="#8B8F97">${r.day.slice(5)}</text>` : '').join('');
+
+  const lines = SERIES_DEFS.map((d) => {
+    const pts = series.map((r, i) => `${x(i).toFixed(1)},${y(Number(r[d.key] ?? 0)).toFixed(1)}`).join(' ');
+    const dots = series.map((r, i) => {
+      const v = Number(r[d.key] ?? 0);
+      return `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${n > 45 ? 1.6 : 2.6}" fill="${d.color}">
+        <title>${r.day} · ${d.label} ${v}</title></circle>`;
+    }).join('');
+    return `<polyline points="${pts}" fill="none" stroke="${d.color}" stroke-width="2"
+      stroke-linejoin="round" stroke-linecap="round"/>${dots}`;
+  }).join('');
+
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+    ${grid}${xlabs}${lines}
+  </svg>
+  <div class="legend">${SERIES_DEFS.map((d) =>
+    `<span><i style="background:${d.color}"></i>${d.label}</span>`).join('')}</div>`;
 }
 
 function render(d) {
@@ -204,7 +221,7 @@ function render(d) {
     <div class="kpi"><div class="v">${num(d.errorReports)}</div><div class="l">풀이 오류 신고</div></div>
   </div>
   <div class="card" style="margin-bottom:14px">
-    <h2>추이 — 신규 가입 · 활성 유저 · 구독</h2>
+    <h2>추이 — 신규 가입 · 활성 유저 · 풀이</h2>
     ${seriesChart(d.series)}
   </div>
   <div class="grid">
