@@ -350,7 +350,8 @@ function render(d) {
     <div class="card"><h2>퍼널 — 기간 내 고유 유저</h2>${
       d.events.funnel.map((f, i, a) => {
         const first = a[0].users || 1;
-        const label = { screen_view:'앱 사용', solve_requested:'풀이 요청', paywall_view:'페이월 조회',
+        const label = { screen_view:'앱 사용', camera_permission:'카메라 화면 도달', shutter_pressed:'셔터 누름',
+                        solve_requested:'풀이 요청', solve_ok:'풀이 성공', paywall_view:'페이월 조회',
                         purchase_initiated:'결제 시도', purchase_success:'결제 완료' }[f.step] ?? f.step;
         return `<div class="funnel-row"><div class="name">${label}</div><div class="n">${num(f.users)}</div>
           <div style="flex:1"><div class="bar" style="width:${(f.users/first*100).toFixed(1)}%"></div></div></div>`;
