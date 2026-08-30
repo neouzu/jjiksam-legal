@@ -40,6 +40,21 @@
   .top button { padding:8px 14px; font-size:13px }
   .err { color:var(--bad); text-align:center; margin-top:20px }
   .scroll { overflow-x:auto }
+  .controls { display:flex; gap:10px; flex-wrap:wrap; margin:0 0 14px }
+  .segs { display:flex; gap:2px; background:#EDEFF3; padding:3px; border-radius:10px; flex-wrap:wrap }
+  .segs button { background:transparent; color:var(--sub); border:0; padding:7px 12px; font-size:13px;
+    font-weight:600; border-radius:8px; cursor:pointer }
+  .segs button.on { background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.12) }
+  /* 시계열 차트 — 막대 3종(NRU·AU·구독)을 한 축에 겹치지 않게 나란히 */
+  .chart { display:flex; align-items:flex-end; gap:2px; height:150px; padding:8px 0 0 }
+  .chart .col { flex:1; min-width:0; display:flex; flex-direction:column; justify-content:flex-end;
+    align-items:center; gap:2px; height:100% }
+  .chart .stack { display:flex; align-items:flex-end; gap:1px; height:100%; width:100% }
+  .chart .b { flex:1; border-radius:2px 2px 0 0; min-height:1px }
+  .b1 { background:var(--brand) } .b2 { background:#00C471 } .b3 { background:#FF9500 }
+  .xlab { font-size:9px; color:var(--sub); white-space:nowrap; overflow:hidden }
+  .legend { display:flex; gap:14px; font-size:12px; color:var(--sub); margin-top:6px }
+  .legend i { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px }
 </style>
 </head>
 <body>
@@ -47,10 +62,32 @@
   <div><h1>찍샘 운영 대시보드</h1><div class="sub" id="meta">키를 입력하세요</div></div>
   <div><button onclick="load()">새로고침</button> <button style="background:#9AA0AE" onclick="resetKey()">키 변경</button></div>
 </div>
+<div class="controls">
+  <div class="segs" id="periods"></div>
+  <div class="segs" id="plats"></div>
+</div>
 <div id="app"></div>
 
 <script>
-const EP = 'https://vskslvtrezsibjthqbhk.supabase.co/functions/v1/report-digest?dash=1&days=30';
+const BASE = 'https://vskslvtrezsibjthqbhk.supabase.co/functions/v1/report-digest?dash=1';
+// 기간 프리셋 — days(길이) + end(끝 오프셋). '어제'만 end=1 이라 하루 구간이 된다.
+const PERIODS = [
+  { id: 'today', label: '오늘', days: 1, end: 0 },
+  { id: 'yday', label: '어제', days: 1, end: 1 },
+  { id: 'd3', label: '3일', days: 3, end: 0 },
+  { id: 'd7', label: '7일', days: 7, end: 0 },
+  { id: 'd14', label: '14일', days: 14, end: 0 },
+  { id: 'd30', label: '30일', days: 30, end: 0 },
+  { id: 'd90', label: '90일', days: 90, end: 0 },
+];
+const PLATS = [
+  { id: 'all', label: '전체' },
+  { id: 'ios', label: 'iOS' },
+  { id: 'android', label: 'Android' },
+];
+let period = 'd30';
+let plat = 'all';
+let timer = null;
 // 게이트웨이 통과용 익명 키 — 공개 키라 앱 번들에도 들어가는 값 (데이터 접근 권한은 x-digest-key 가 결정)
 const ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZza3NsdnRyZXpzaWJqdGhxYmhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODgzMTQsImV4cCI6MjEwMjQ2NDMxNH0.fuHY8meafITAqgIljOfCQXx4bghGkqDm1XsoE__drCY';
 const $ = (h) => { const d = document.createElement('div'); d.innerHTML = h; return d.firstElementChild; };
@@ -63,6 +100,20 @@ const num = (n) => Number(n ?? 0).toLocaleString();
 const app = document.getElementById('app');
 
 function resetKey() { delKey(); location.reload(); }
+
+function segs(elId, items, current, onPick) {
+  const el = document.getElementById(elId);
+  el.innerHTML = items.map((it) =>
+    `<button data-id="${it.id}" class="${it.id === current ? 'on' : ''}">${it.label}</button>`).join('');
+  el.querySelectorAll('button').forEach((b) => {
+    b.onclick = () => { onPick(b.dataset.id); };
+  });
+}
+
+function renderControls() {
+  segs('periods', PERIODS, period, (id) => { period = id; load(); });
+  segs('plats', PLATS, plat, (id) => { plat = id; load(); });
+}
 
 function askKey() {
   app.innerHTML = '';
@@ -80,16 +131,24 @@ async function load() {
   document.getElementById('meta').textContent = '불러오는 중…';
   let d;
   try {
-    const res = await fetch(EP, { headers: { 'x-digest-key': key, Authorization: `Bearer ${ANON}` } });
+    const p = PERIODS.find((x) => x.id === period) ?? PERIODS[5];
+    const url = `${BASE}&days=${p.days}&end=${p.end}&platform=${plat}`;
+    const res = await fetch(url, { headers: { 'x-digest-key': key, Authorization: `Bearer ${ANON}` } });
     if (res.status === 403) { delKey(); return askKey(); }
     d = await res.json();
   } catch (e) {
     app.innerHTML = `<div class="err">불러오기 실패 — 네트워크 또는 키 확인 (${e})</div>`;
     return;
   }
+  const pLabel = (PERIODS.find((x) => x.id === period) ?? {}).label ?? '';
+  const platLabel = (PLATS.find((x) => x.id === plat) ?? {}).label ?? '';
   document.getElementById('meta').textContent =
-    `최근 ${d.days}일 · 내부 계정 제외 · ${new Date().toLocaleString('ko-KR')}`;
+    `${pLabel} · ${platLabel} · 내부 계정 제외 · ${new Date().toLocaleString('ko-KR')} (10분마다 자동 새로고침)`;
+  renderControls();
   render(d);
+  // 10분 자동 새로고침 — 중복 타이머가 쌓이지 않게 매번 다시 건다
+  if (timer) clearTimeout(timer);
+  timer = setTimeout(load, 10 * 60 * 1000);
 }
 
 function barTable(rows, cols) {
@@ -99,6 +158,29 @@ function barTable(rows, cols) {
     ${rows.map((r) => `<tr><td>${r[0]}</td>${r.slice(1).map((v)=>`<td class="n">${num(v)}</td>`).join('')}
       <td style="width:36%"><div class="bar" style="width:${(r[1]/max*100).toFixed(1)}%"></div></td></tr>`).join('')}
   </table></div>`;
+}
+
+/** NRU·AU·구독 3종 시계열 — 하루당 막대 3개. 값이 0 인 날도 자리를 지켜 추세가 왜곡되지 않는다 */
+function seriesChart(series) {
+  if (!series || !series.length) return '<div class="sub">데이터 없음</div>';
+  const max = Math.max(1, ...series.map((r) => Math.max(r.nru, r.au, r.subs)));
+  const showLab = (i) => series.length <= 14 || i % Math.ceil(series.length / 14) === 0;
+  const h = (v) => `${(v / max * 100).toFixed(1)}%`;
+  return `<div class="chart">${series.map((r, i) => `
+    <div class="col" title="${r.day} · 신규 ${r.nru} · 활성 ${r.au} · 구독 ${r.subs}">
+      <div class="stack">
+        <div class="b b1" style="height:${h(r.nru)}"></div>
+        <div class="b b2" style="height:${h(r.au)}"></div>
+        <div class="b b3" style="height:${h(r.subs)}"></div>
+      </div>
+      <div class="xlab">${showLab(i) ? r.day.slice(5) : ''}</div>
+    </div>`).join('')}</div>
+  <div class="legend">
+    <span><i class="b1"></i>신규 가입(NRU)</span>
+    <span><i class="b2"></i>활성 유저(AU)</span>
+    <span><i class="b3"></i>구독</span>
+    <span style="margin-left:auto">최대 ${max}</span>
+  </div>`;
 }
 
 function render(d) {
@@ -117,7 +199,13 @@ function render(d) {
     <div class="kpi"><div class="v">${num(today.active_solvers)}</div><div class="l">오늘 풀이 유저</div></div>
     <div class="kpi"><div class="v">${fbRate}</div><div class="l">도움됐어요 비율 (👍${num(fb.up)} 👎${num(fb.down)})</div></div>
     <div class="kpi"><div class="v">$${cost.toFixed(2)}</div><div class="l">기간 AI 원가</div></div>
+    <div class="kpi"><div class="v">${num((d.series ?? []).reduce((a, r) => a + r.nru, 0))}</div><div class="l">기간 신규 가입</div></div>
+    <div class="kpi"><div class="v">${num((d.series ?? []).reduce((a, r) => a + r.subs, 0))}</div><div class="l">기간 구독 결제</div></div>
     <div class="kpi"><div class="v">${num(d.errorReports)}</div><div class="l">풀이 오류 신고</div></div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <h2>추이 — 신규 가입 · 활성 유저 · 구독</h2>
+    ${seriesChart(d.series)}
   </div>
   <div class="grid">
     <div class="card"><h2>활성 — 일별 DAU</h2>${barTable(
