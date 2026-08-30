@@ -45,6 +45,14 @@
   .segs button { background:transparent; color:var(--sub); border:0; padding:7px 12px; font-size:13px;
     font-weight:600; border-radius:8px; cursor:pointer }
   .segs button.on { background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.12) }
+  .chartwrap { position:relative }
+  .tip { position:absolute; top:8px; display:none; background:#fff; border:1px solid var(--line);
+    border-radius:10px; box-shadow:0 8px 24px rgba(18,20,26,.12); padding:8px 10px; font-size:12px;
+    pointer-events:none; min-width:150px; z-index:5 }
+  .tip b { display:block; margin-bottom:4px; font-size:12px }
+  .tip div { display:flex; align-items:center; gap:6px; color:var(--sub); line-height:1.7 }
+  .tip div span { margin-left:auto; color:var(--ink); font-weight:700 }
+  .tip i { display:inline-block; width:8px; height:8px; border-radius:2px }
   .legend { display:flex; gap:14px; font-size:12px; color:var(--sub); margin-top:6px }
   .legend i { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px }
 </style>
@@ -138,6 +146,7 @@ async function load() {
     `${pLabel} · ${platLabel} · 내부 계정 제외 · ${new Date().toLocaleString('ko-KR')} (10분마다 자동 새로고침)`;
   renderControls();
   render(d);
+  bindChart();
   // 10분 자동 새로고침 — 중복 타이머가 쌓이지 않게 매번 다시 건다
   if (timer) clearTimeout(timer);
   timer = setTimeout(load, 10 * 60 * 1000);
@@ -166,13 +175,14 @@ const SERIES_DEFS = [
 
 function seriesChart(series) {
   if (!series || !series.length) return '<div class="sub">데이터 없음</div>';
+  window.__series = series; // 툴팁이 인덱스로 값을 찾는다
   const W = 760, H = 200, PAD = { l: 34, r: 8, t: 10, b: 22 };
   const max = Math.max(1, ...series.flatMap((r) => SERIES_DEFS.map((d) => Number(r[d.key] ?? 0))));
   const n = series.length;
   const x = (i) => PAD.l + (n === 1 ? (W - PAD.l - PAD.r) / 2 : i * (W - PAD.l - PAD.r) / (n - 1));
   const y = (v) => PAD.t + (H - PAD.t - PAD.b) * (1 - v / max);
+  window.__chart = { W, H, PAD, n, xs: series.map((_, i) => x(i)) };
 
-  // Y 눈금 — 0·중간·최대 세 줄이면 충분하다(값이 작아 촘촘하면 오히려 읽기 나쁘다)
   const ticks = [0, Math.round(max / 2), max].filter((v, i, a) => a.indexOf(v) === i);
   const grid = ticks.map((t) =>
     `<line x1="${PAD.l}" x2="${W - PAD.r}" y1="${y(t)}" y2="${y(t)}" stroke="#E7E8EC" stroke-width="1"/>
@@ -184,20 +194,63 @@ function seriesChart(series) {
 
   const lines = SERIES_DEFS.map((d) => {
     const pts = series.map((r, i) => `${x(i).toFixed(1)},${y(Number(r[d.key] ?? 0)).toFixed(1)}`).join(' ');
-    const dots = series.map((r, i) => {
-      const v = Number(r[d.key] ?? 0);
-      return `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${n > 45 ? 1.6 : 2.6}" fill="${d.color}">
-        <title>${r.day} · ${d.label} ${v}</title></circle>`;
-    }).join('');
+    const dots = series.map((r, i) =>
+      `<circle class="pt pt-${d.key}" data-i="${i}" cx="${x(i).toFixed(1)}" cy="${y(Number(r[d.key] ?? 0)).toFixed(1)}"
+        r="${n > 45 ? 1.8 : 2.8}" fill="${d.color}"/>`).join('');
     return `<polyline points="${pts}" fill="none" stroke="${d.color}" stroke-width="2"
       stroke-linejoin="round" stroke-linecap="round"/>${dots}`;
   }).join('');
 
-  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
-    ${grid}${xlabs}${lines}
-  </svg>
+  // 마우스 잡이 영역 — 점이 작아 <title> 로는 잘 안 잡힌다(실측). 열 전체를 hover 대상으로.
+  const halfW = (W - PAD.l - PAD.r) / Math.max(1, n - 1) / 2;
+  const hits = series.map((r, i) =>
+    `<rect class="hit" data-i="${i}" x="${(x(i) - halfW).toFixed(1)}" y="${PAD.t}"
+      width="${(halfW * 2).toFixed(1)}" height="${H - PAD.t - PAD.b}" fill="transparent"/>`).join('');
+
+  return `<div class="chartwrap">
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+      ${grid}${xlabs}
+      <line id="guide" y1="${PAD.t}" y2="${H - PAD.b}" stroke="#B9BDC7" stroke-width="1" stroke-dasharray="3 3" style="display:none"/>
+      ${lines}${hits}
+    </svg>
+    <div class="tip" id="tip"></div>
+  </div>
   <div class="legend">${SERIES_DEFS.map((d) =>
     `<span><i style="background:${d.color}"></i>${d.label}</span>`).join('')}</div>`;
+}
+
+/** 차트 hover 바인딩 — render() 가 innerHTML 을 갈아끼우므로 매 렌더 후 다시 건다 */
+function bindChart() {
+  const wrap = document.querySelector('.chartwrap');
+  if (!wrap) return;
+  const tip = wrap.querySelector('#tip');
+  const guide = wrap.querySelector('#guide');
+  const show = (i, ev) => {
+    const r = window.__series?.[i];
+    if (!r) return;
+    tip.innerHTML = `<b>${r.day}</b>` + SERIES_DEFS.map((d) =>
+      `<div><i style="background:${d.color}"></i>${d.label}<span>${Number(r[d.key] ?? 0).toLocaleString()}</span></div>`).join('');
+    tip.style.display = 'block';
+    const box = wrap.getBoundingClientRect();
+    const px = ev.clientX - box.left;
+    // 오른쪽 끝에서는 툴팁을 왼쪽으로 뒤집어 잘리지 않게
+    tip.style.left = Math.min(Math.max(px + 12, 4), box.width - tip.offsetWidth - 4) + 'px';
+    const gx = window.__chart.xs[i];
+    guide.setAttribute('x1', gx); guide.setAttribute('x2', gx);
+    guide.style.display = '';
+    wrap.querySelectorAll('circle.pt').forEach((c) => {
+      c.setAttribute('opacity', Number(c.dataset.i) === i ? '1' : '0.35');
+    });
+  };
+  wrap.querySelectorAll('rect.hit').forEach((el) => {
+    el.addEventListener('mousemove', (ev) => show(Number(el.dataset.i), ev));
+    el.addEventListener('touchstart', (ev) => show(Number(el.dataset.i), ev.touches[0]), { passive: true });
+  });
+  wrap.addEventListener('mouseleave', () => {
+    tip.style.display = 'none';
+    guide.style.display = 'none';
+    wrap.querySelectorAll('circle.pt').forEach((c) => c.removeAttribute('opacity'));
+  });
 }
 
 function render(d) {
